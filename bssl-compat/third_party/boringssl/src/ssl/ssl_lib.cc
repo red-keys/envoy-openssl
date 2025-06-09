@@ -833,6 +833,7 @@ int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
 }
 
 int SSL_do_handshake(SSL *ssl) {
+  ENVOY_LOG(debug, "TLS handshake result: {}", rc);  	
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {
@@ -861,6 +862,12 @@ int SSL_do_handshake(SSL *ssl) {
     ssl_maybe_shed_handshake_config(ssl);
   }
 
+  // 握手成功，记录协商的密码套件
+  const SSL_CIPHER* cipher = SSL_get_current_cipher(ssl());
+  if (cipher) {
+    ENVOY_LOG(info, "TLS handshake successful, negotiated cipher: {} ({})",
+              SSL_CIPHER_get_name(cipher), SSL_CIPHER_get_version(cipher));
+  }
   return 1;
 }
 

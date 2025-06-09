@@ -135,6 +135,30 @@ bool SslHandshakerImpl::peerCertificateValidated() const {
 Network::PostIoAction SslHandshakerImpl::doHandshake() {
   ASSERT(state_ != Ssl::SocketState::HandshakeComplete && state_ != Ssl::SocketState::ShutdownSent);
   int rc = SSL_do_handshake(ssl());
+
+  // 添加日志打印证书链
+  if (rc == 1) {  // 握手成功
+    STACK_OF(X509)* cert_chain = SSL_get_peer_full_cert_chain(ssl());
+    if (cert_chain != nullptr) {
+      int chain_length = sk_X509_num(cert_chain);
+      ENVOY_LOG(info, "202505131430 SSL handshake completed with peer certificate chain length: {}", chain_length);
+
+      for (int i = 0; i < chain_length; i++) {
+        X509* cert = sk_X509_value(cert_chain, i);
+        if (cert) {
+          // 获取证书主题
+          X509_NAME* subject_name = X509_get_subject_name(cert);
+          char subject_buf[256];
+          X509_NAME_oneline(subject_name, subject_buf, sizeof(subject_buf));
+
+          ENVOY_LOG(info, "202505131430 Certificate {} in chain: Subject: {}", i, subject_buf);
+        }
+      }
+    } else {
+      ENVOY_LOG(info, "202505131430 SSL handshake completed but no peer certificate chain available");
+    }
+  }
+
   if (rc == 1) {
     state_ = Ssl::SocketState::HandshakeComplete;
     handshake_callbacks_->onSuccess(ssl());

@@ -120,7 +120,12 @@ if [[ -n "${ENVOY_DOCKER_PULL}" ]]; then
 fi
 
 # Since we specify an explicit hash, docker-run will pull from the remote repo if missing.
-docker run --rm \
+docker run --network host --rm \
+       -v openssl-3.0.8:/openssl-3.0.8 \
+       -v bazel-cache:/.cache/bazel \
+       -v tongsuo_install_dir:/usr/local/tongsuo \
+       -v tongsuo_lib_dir:/usr/local/tongsuo/lib64 \
+       -v /root/Download/:/Download \
        "${ENVOY_DOCKER_OPTIONS[@]}" \
        "${VOLUMES[@]}" \
        -e BUILD_DIR \
