@@ -646,7 +646,7 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define TLS1_1_VERSION 0x0302
 #define TLS1_2_VERSION 0x0303
 #define TLS1_3_VERSION 0x0304
-
+#define NTLS1_1_VERSION 0x0101
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
 
@@ -716,6 +716,7 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 #define SSL_OP_NO_TLSv1_1 0x10000000L
 #define SSL_OP_NO_TLSv1_3 0x20000000L
 #define SSL_OP_NO_DTLSv1 SSL_OP_NO_TLSv1
+#define SSL_OP_NO_NTLSv1_1 0x08000000L
 #define SSL_OP_NO_DTLSv1_2 SSL_OP_NO_TLSv1_2
 
 // SSL_CTX_set_options enables all options set in |options| (which should be one
