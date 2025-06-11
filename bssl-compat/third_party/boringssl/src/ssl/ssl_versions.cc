@@ -31,7 +31,6 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
     case TLS1_1_VERSION:
     case TLS1_2_VERSION:
     case TLS1_3_VERSION:
-    case NTLS1_1_VERSION:
       *out = version;
       return true;
 
@@ -57,7 +56,6 @@ static const uint16_t kTLSVersions[] = {
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
-    NTLS1_1_VERSION,
 };
 
 static const uint16_t kDTLSVersions[] = {
@@ -103,9 +101,6 @@ static const char *ssl_version_to_string(uint16_t version) {
 
     case DTLS1_2_VERSION:
       return "DTLSv1.2";
-
-    case NTLS1_1_VERSION:
-      return "NTLSv1.1";
 
     default:
       return "unknown";
@@ -170,7 +165,6 @@ const struct {
     {TLS1_1_VERSION, SSL_OP_NO_TLSv1_1},
     {TLS1_2_VERSION, SSL_OP_NO_TLSv1_2},
     {TLS1_3_VERSION, SSL_OP_NO_TLSv1_3},
-    {NTLS1_1_VERSION, SSL_OP_NO_NTLSv1_1},
 };
 
 bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,

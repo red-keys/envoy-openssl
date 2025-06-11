@@ -300,8 +300,6 @@ unsigned ContextConfigImpl::tlsVersionFromProto(
     return TLS1_2_VERSION;
   case envoy::extensions::transport_sockets::tls::v3::TlsParameters::TLSv1_3:
     return TLS1_3_VERSION;
-  case envoy::extensions::transport_sockets::tls::v3::TlsParameters::NTLSv1_1:
-    return NTLS1_1_VERSION;
   }
   IS_ENVOY_BUG("unexpected tls version provided");
   return default_version;
