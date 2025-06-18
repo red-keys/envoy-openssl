@@ -156,8 +156,8 @@ private:
   static const unsigned DEFAULT_MIN_VERSION;
   static const unsigned DEFAULT_MAX_VERSION;
 
-  const unsigned DEFAULT_NTLS_MIN_VERSION;
-  const unsigned DEFAULT_NTLS_MAX_VERSION;
+  static const unsigned DEFAULT_NTLS_MIN_VERSION;
+  static const unsigned DEFAULT_NTLS_MAX_VERSION;
 
   const std::string server_name_indication_;
   const bool allow_renegotiation_;
