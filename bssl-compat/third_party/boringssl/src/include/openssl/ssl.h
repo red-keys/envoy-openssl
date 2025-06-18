@@ -647,6 +647,8 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define TLS1_2_VERSION 0x0303
 #define TLS1_3_VERSION 0x0304
 
+#define NTLS1_1_VERSION 0x0101
+
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
 

@@ -307,6 +307,8 @@ unsigned ContextConfigImpl::tlsVersionFromProto(
 
 const unsigned ClientContextConfigImpl::DEFAULT_MIN_VERSION = TLS1_2_VERSION;
 const unsigned ClientContextConfigImpl::DEFAULT_MAX_VERSION = TLS1_2_VERSION;
+const unsigned ClientContextConfigImpl::DEFAULT_NTLS_MIN_VERSION = NTLS1_1_VERSION;
+const unsigned ClientContextConfigImpl::DEFAULT_NTLS_MAX_VERSION = NTLS1_1_VERSION;
 
 const std::string ClientContextConfigImpl::DEFAULT_CIPHER_SUITES =
   isFipsEnabled ?
@@ -339,7 +341,9 @@ ClientContextConfigImpl::ClientContextConfigImpl(
     const envoy::extensions::transport_sockets::tls::v3::UpstreamTlsContext& config,
     Server::Configuration::TransportSocketFactoryContext& factory_context,
     absl::Status& creation_status)
-    : ContextConfigImpl(config.common_tls_context(), DEFAULT_MIN_VERSION, DEFAULT_MAX_VERSION,
+    : ContextConfigImpl(config.common_tls_context(), 
+                            (config.ntls_enabled())?DEFAULT_NTLS_MIN_VERSION:DEFAULT_MIN_VERSION,
+                            (config.ntls_enabled())?DEFAULT_NTLS_MAX_VERSION:DEFAULT_MAX_VERSION,
                         DEFAULT_CIPHER_SUITES, DEFAULT_CURVES, factory_context, creation_status),
       server_name_indication_(config.sni()), allow_renegotiation_(config.allow_renegotiation()),
       enforce_rsa_key_usage_(PROTOBUF_GET_WRAPPED_OR_DEFAULT(config, enforce_rsa_key_usage, false)),
