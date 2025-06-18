@@ -342,8 +342,8 @@ ClientContextConfigImpl::ClientContextConfigImpl(
     Server::Configuration::TransportSocketFactoryContext& factory_context,
     absl::Status& creation_status)
     : ContextConfigImpl(config.common_tls_context(), 
-                            (config.ntls_enabled())?DEFAULT_NTLS_MIN_VERSION:DEFAULT_MIN_VERSION,
-                            (config.ntls_enabled())?DEFAULT_NTLS_MAX_VERSION:DEFAULT_MAX_VERSION,
+                            (config.common_tls_context().ntls_enabled())?DEFAULT_NTLS_MIN_VERSION:DEFAULT_MIN_VERSION,
+                            (config.common_tls_context().ntls_enabled())?DEFAULT_NTLS_MAX_VERSION:DEFAULT_MAX_VERSION,
                         DEFAULT_CIPHER_SUITES, DEFAULT_CURVES, factory_context, creation_status),
       server_name_indication_(config.sni()), allow_renegotiation_(config.allow_renegotiation()),
       enforce_rsa_key_usage_(PROTOBUF_GET_WRAPPED_OR_DEFAULT(config, enforce_rsa_key_usage, false)),

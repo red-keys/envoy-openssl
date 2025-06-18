@@ -135,6 +135,7 @@ uncomment.sh "$1" --comment -h \
 	--uncomment-func-decl SSL_free \
 	--uncomment-macro-redef 'SSL_ERROR_[[:alnum:]_]*' \
 	--uncomment-macro-redef '\(DTLS1\|DTLS1_2\|SSL3\|TLS1\|TLS1_1\|TLS1_2\|TLS1_3\)_VERSION' \
+  --uncomment-macro-redef 'NTLS1_1_VERSION' \
 	--uncomment-macro-redef '\(DTLS1\|SSL3\)_VERSION_MAJOR' \
   --uncomment-func-decl SSL_CTX_get_min_proto_version \
   --uncomment-func-decl SSL_CTX_get_max_proto_version \
