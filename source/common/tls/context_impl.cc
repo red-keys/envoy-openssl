@@ -111,8 +111,8 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     if (config.ntlsEnabled()) {
       ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");  
       SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());
-      ctx.conf_min_version = NTLS1_1_VERSION;
-      ctx.conf_max_version = NTLS1_1_VERSION;
+      ctx.ssl_ctx_.get()->conf_min_version = NTLS1_1_VERSION;
+      ctx.ssl_ctx_.get()->conf_max_version = NTLS1_1_VERSION;
     }
     else
     {
