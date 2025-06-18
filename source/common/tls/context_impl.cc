@@ -104,20 +104,24 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     auto& ctx = tls_contexts_[i];
     ctx.ssl_ctx_.reset(SSL_CTX_new(TLS_method()));
     ssl_contexts[i] = ctx.ssl_ctx_.get();
-       
-    if (config.ntlsEnabled()) {  // 需要从 ContextConfig 传递这个配置  
-   	 ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");  
-   	 SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());  
-    }
-    
+
     int rc = SSL_CTX_set_app_data(ctx.ssl_ctx_.get(), this);
     RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
 
-    rc = SSL_CTX_set_min_proto_version(ctx.ssl_ctx_.get(), config.minProtocolVersion());
-    RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
+    if (config.ntlsEnabled()) {
+      ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");  
+      SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());
+      ctx->conf_min_version = NTLS1_1_VERSION;
+      ctx->conf_max_version = NTLS1_1_VERSION;
+    }
+    else
+    {
+      rc = SSL_CTX_set_min_proto_version(ctx.ssl_ctx_.get(), config.minProtocolVersion());
+      RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
 
-    rc = SSL_CTX_set_max_proto_version(ctx.ssl_ctx_.get(), config.maxProtocolVersion());
-    RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
+      rc = SSL_CTX_set_max_proto_version(ctx.ssl_ctx_.get(), config.maxProtocolVersion());
+      RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
+    }
 
     if (!capabilities_.provides_ciphers_and_curves &&
         !SSL_CTX_set_strict_cipher_list(ctx.ssl_ctx_.get(), config.cipherSuites().c_str())) {

@@ -31,6 +31,7 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
     case TLS1_1_VERSION:
     case TLS1_2_VERSION:
     case TLS1_3_VERSION:
+    case NTLS1_1_VERSION:
       *out = version;
       return true;
 
@@ -63,14 +64,24 @@ static const uint16_t kDTLSVersions[] = {
     DTLS1_VERSION,
 };
 
+static const uint16_t kNTLSVersions[] = {
+    NTLS1_1_VERSION,
+};
+
+
 static Span<const uint16_t> get_method_versions(
-    const SSL_PROTOCOL_METHOD *method) {
+    const SSL_PROTOCOL_METHOD *method) {   
   return method->is_dtls ? Span<const uint16_t>(kDTLSVersions)
                          : Span<const uint16_t>(kTLSVersions);
 }
 
 bool ssl_method_supports_version(const SSL_PROTOCOL_METHOD *method,
                                  uint16_t version) {
+  for (uint16_t supported : Span<const uint16_t>(kNTLSVersions)) {
+    if (supported == version) {
+      return true;
+    }
+  }                               
   for (uint16_t supported : get_method_versions(method)) {
     if (supported == version) {
       return true;
