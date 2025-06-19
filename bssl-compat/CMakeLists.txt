@@ -145,6 +145,8 @@ add_library(bssl-compat STATIC
   source/SSL_CTX_set_cert_verify_callback.cc
   source/SSL_CTX_set_client_CA_list.cc
   source/SSL_CTX_set_custom_verify.cc
+  source/SSL_CTX_set_ntls_min_proto_version.cc
+  source/SSL_CTX_set_ntls_max_proto_version.cc
   source/SSL_CTX_set_next_protos_advertised_cb.cc
   source/SSL_CTX_set_private_key_method.cc
   source/SSL_CTX_set_select_certificate_cb.cc

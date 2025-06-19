@@ -14,4 +14,8 @@ OPENSSL_EXPORT int SSL_CTX_use_NTLS_certificate(SSL_CTX *ctx, X509 *x509, int nt
 
 OPENSSL_EXPORT int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled);
 
+OPENSSL_EXPORT int SSL_CTX_set_ntls_min_proto_version(SSL_CTX *ctx, uint16_t version);
+
+OPENSSL_EXPORT int SSL_CTX_set_ntls_max_proto_version(SSL_CTX *ctx, uint16_t version);
+
 #endif
