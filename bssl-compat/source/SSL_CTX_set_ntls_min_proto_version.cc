@@ -1,5 +1,5 @@
-#include <openssl/ssl.h>
-#include <ossl.h>
+#include <openssl/ssl.h>  
+#include "bssl-compat/third_party/boringssl/src/ssl/internal.h"  
 
 
 extern "C" int SSL_CTX_set_ntls_min_proto_version(SSL_CTX *ctx, uint16_t version) {
