@@ -658,10 +658,20 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 OPENSSL_EXPORT int SSL_CTX_set_min_proto_version(SSL_CTX *ctx,
                                                  uint16_t version);
 
+// There is no function with the same name in OpenSSL, 
+// unlike SSL_CTX_set_min_proto_version, which would invoke the OpenSSL version.
+OPENSSL_EXPORT int SSL_CTX_set_ntls_min_proto_version(SSL_CTX *ctx,
+                                                 uint16_t version);
+
 // SSL_CTX_set_max_proto_version sets the maximum protocol version for |ctx| to
 // |version|. If |version| is zero, the default maximum version is used. It
 // returns one on success and zero if |version| is invalid.
 OPENSSL_EXPORT int SSL_CTX_set_max_proto_version(SSL_CTX *ctx,
+                                                 uint16_t version);
+
+// There is no function with the same name in OpenSSL, 
+// unlike SSL_CTX_set_max_proto_version, which would invoke the OpenSSL version.
+OPENSSL_EXPORT int SSL_CTX_set_ntls_max_proto_version(SSL_CTX *ctx,
                                                  uint16_t version);
 
 // SSL_CTX_get_min_proto_version returns the minimum protocol version for |ctx|
