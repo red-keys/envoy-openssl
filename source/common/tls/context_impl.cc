@@ -104,9 +104,9 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     auto& ctx = tls_contexts_[i];
 
     if (config.ntlsEnabled()) {
-      ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");  
-      SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());
+      ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");   
       ctx.ssl_ctx_.reset(SSL_CTX_new(NTLS_method()));
+      SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());
     }
     else
     {
