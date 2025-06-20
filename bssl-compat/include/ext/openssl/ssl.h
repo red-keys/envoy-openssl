@@ -14,4 +14,10 @@ OPENSSL_EXPORT int SSL_CTX_use_NTLS_certificate(SSL_CTX *ctx, X509 *x509, int nt
 
 OPENSSL_EXPORT int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled);
 
+OPENSSL_EXPORT const SSL_METHOD *NTLS_method(void);
+
+OPENSSL_EXPORT const SSL_METHOD *NTLS_server_method(void);
+
+OPENSSL_EXPORT const SSL_METHOD *NTLS_client_method(void);
+
 #endif

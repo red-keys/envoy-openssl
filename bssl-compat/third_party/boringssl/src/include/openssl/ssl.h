@@ -180,6 +180,8 @@ extern "C" {
 // multiple threads. Once shared, functions which change the |SSL_CTX|'s
 // configuration may not be used.
 
+OPENSSL_EXPORT const SSL_METHOD *NTLS_method(void);
+
 // TLS_method is the |SSL_METHOD| used for TLS connections.
 OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 
@@ -4577,6 +4579,8 @@ OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
 
 // These client- and server-specific methods call their corresponding generic
 // methods.
+OPENSSL_EXPORT const SSL_METHOD *NTLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *NTLS_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLS_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLS_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);

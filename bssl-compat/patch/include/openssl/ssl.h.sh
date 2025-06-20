@@ -6,6 +6,7 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl TLS_method \
   --uncomment-func-decl OPENSSL_init_ssl \
 	--uncomment-func-decl DTLS_method \
+  --uncomment-func-decl NTLS_method \
   --uncomment-func-decl SSL_write \
   --uncomment-func-decl SSL_version \
   --uncomment-func-decl SSL_shutdown \
@@ -181,6 +182,8 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl SSL_CIPHER_get_rfc_name \
   --uncomment-func-decl TLS_server_method \
   --uncomment-func-decl TLS_client_method \
+  --uncomment-func-decl NTLS_server_method \
+  --uncomment-func-decl NTLS_client_method \
   --uncomment-func-decl i2d_SSL_SESSION \
   --uncomment-func-decl d2i_SSL_SESSION \
   --uncomment-func-decl SSL_CTX_set1_sigalgs_list \

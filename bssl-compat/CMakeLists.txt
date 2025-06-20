@@ -561,6 +561,9 @@ target_add_bssl_function(bssl-compat
   TLS_client_method
   TLS_method
   TLS_server_method
+  NTLS_client_method
+  NTLS_method
+  NTLS_server_method
   X509_add1_ext_i2d
   X509_alias_get0
   X509_cmp
