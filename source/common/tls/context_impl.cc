@@ -102,16 +102,21 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
   std::vector<SSL_CTX*> ssl_contexts(tls_contexts_.size());
   for (size_t i = 0; i < tls_contexts_.size(); i++) {
     auto& ctx = tls_contexts_[i];
-    ctx.ssl_ctx_.reset(SSL_CTX_new(TLS_method()));
-    ssl_contexts[i] = ctx.ssl_ctx_.get();
-
-    int rc = SSL_CTX_set_app_data(ctx.ssl_ctx_.get(), this);
-    RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
 
     if (config.ntlsEnabled()) {
       ENVOY_LOG(info, "Enabling NTLS for SSL_CTX");  
       SSL_CTX_enable_ntls(ctx.ssl_ctx_.get());
+      ctx.ssl_ctx_.reset(SSL_CTX_new(NTLS_method()));
     }
+    else
+    {
+      ctx.ssl_ctx_.reset(SSL_CTX_new(TLS_method()));
+    }
+
+    ssl_contexts[i] = ctx.ssl_ctx_.get();
+
+    int rc = SSL_CTX_set_app_data(ctx.ssl_ctx_.get(), this);
+    RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
 
     rc = SSL_CTX_set_min_proto_version(ctx.ssl_ctx_.get(), config.minProtocolVersion());
     RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
