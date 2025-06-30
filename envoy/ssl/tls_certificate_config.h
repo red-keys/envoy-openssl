@@ -5,6 +5,7 @@
 
 #include "envoy/common/pure.h"
 #include "envoy/ssl/private_key/private_key.h"
+#include "envoy/extensions/transport_sockets/tls/v3/common.pb.h"
 
 namespace Envoy {
 namespace Ssl {
