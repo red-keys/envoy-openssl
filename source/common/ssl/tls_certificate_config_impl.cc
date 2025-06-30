@@ -77,6 +77,7 @@ TlsCertificateConfigImpl::TlsCertificateConfigImpl(
       ocsp_staple_(maybeReadOcspStaple(config.ocsp_staple(), api, creation_status)),
       ocsp_staple_path_(Config::DataSource::getPath(config.ocsp_staple())
                             .value_or(ocsp_staple_.empty() ? EMPTY_STRING : INLINE_STRING)),
+      certificate_usage_(config.certificate_usage()),
       private_key_method_(nullptr) {
   if (config.has_pkcs12()) {
     if (config.has_private_key()) {
