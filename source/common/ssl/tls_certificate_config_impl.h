@@ -18,6 +18,9 @@ public:
 
   const std::string& certificateChain() const override { return certificate_chain_; }
   const std::string& certificateChainPath() const override { return certificate_chain_path_; }
+  envoy::extensions::transport_sockets::tls::v3::CertificateUsage certificateUsage() const override {
+    return certificate_usage_;  
+  }
   const std::string& privateKey() const override { return private_key_; }
   const std::string& privateKeyPath() const override { return private_key_path_; }
   const std::string& pkcs12() const override { return pkcs12_; }
@@ -47,6 +50,7 @@ private:
   const std::vector<uint8_t> ocsp_staple_;
   const std::string ocsp_staple_path_;
   Envoy::Ssl::PrivateKeyMethodProviderSharedPtr private_key_method_{};
+  const envoy::extensions::transport_sockets::tls::v3::CertificateUsage certificate_usage_;
 };
 
 } // namespace Ssl

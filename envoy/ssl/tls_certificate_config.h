@@ -24,6 +24,9 @@ public:
    */
   virtual const std::string& certificateChainPath() const PURE;
 
+
+  virtual envoy::extensions::transport_sockets::tls::v3::CertificateUsage certificateUsage() const PURE;
+
   /**
    * @return a string of private key.
    */
