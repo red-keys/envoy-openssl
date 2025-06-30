@@ -424,15 +424,14 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
 }
 
 absl::Status ContextImpl::validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& tls_certificate) {  
-  const auto usage = tls_certificate.certificateUsage();  
-  if(usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::DEFAULT) {
-      return absl::InvalidArgumentError(  
-          fmt::format("certificate_usage must be SIGN or ENCRYPT"));
+  if(tls_certificate.certificateUsage() == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::DEFAULT) {
+    return absl::InvalidArgumentError(  
+      fmt::format("certificate_usage must be SIGN or ENCRYPT"));
   }
 
-  if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::SIGN) {  
+  if (tls_certificate.certificateUsage() == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::SIGN) {  
     return validateFilenamePrefix(tls_certificate, "sign", "SIGN");  
-  } else if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::ENCRYPT) {  
+  } else if (tls_certificate.certificateUsage() == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::ENCRYPT) {  
     return validateFilenamePrefix(tls_certificate, "enc", "ENCRYPT");  
   }  
     
