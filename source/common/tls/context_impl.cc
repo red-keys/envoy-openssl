@@ -440,22 +440,21 @@ absl::Status ContextImpl::validateCertificateUsage(const Envoy::Ssl::TlsCertific
 }  
   
 absl::Status ContextImpl::validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
-                                   const std::string& required_prefix,  
-                                   const std::string& usage_name) {  
-  
-  if (tls_certificate.has_certificate_chain() && tls_certificate.certificate_chain().has_filename()) {  
-    const std::string& cert_filename = tls_certificate.certificate_chain().filename();  
-    std::string basename = cert_filename.substr(cert_filename.find_last_of("/\\") + 1);  
+                                                 const std::string& required_prefix,  
+                                                 const std::string& usage_name) {  
+  const std::string& cert_path = tls_certificate.certificateChainPath();  
+  if (!cert_path.empty() && cert_path != "<inline>") {  
+    std::string basename = cert_path.substr(cert_path.find_last_of("/\\") + 1);  
     if (!absl::StartsWith(basename, required_prefix)) {  
       return absl::InvalidArgumentError(  
           fmt::format("Certificate chain filename '{}' must start with '{}' when certificate_usage is {}",   
                      basename, required_prefix, usage_name));  
     }  
   }  
-  
-  if (tls_certificate.has_private_key() && tls_certificate.private_key().has_filename()) {  
-    const std::string& key_filename = tls_certificate.private_key().filename();  
-    std::string basename = key_filename.substr(key_filename.find_last_of("/\\") + 1);  
+      
+  const std::string& key_path = tls_certificate.privateKeyPath();  
+  if (!key_path.empty() && key_path != "<inline>") {  
+    std::string basename = key_path.substr(key_path.find_last_of("/\\") + 1);  
     if (!absl::StartsWith(basename, required_prefix)) {  
       return absl::InvalidArgumentError(  
           fmt::format("Private key filename '{}' must start with '{}' when certificate_usage is {}",   
