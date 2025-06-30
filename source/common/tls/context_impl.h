@@ -168,6 +168,13 @@ protected:
   const Network::Address::IpList tls_keylog_local_;
   const Network::Address::IpList tls_keylog_remote_;
   AccessLog::AccessLogFileSharedPtr tls_keylog_file_;
+
+private:
+  absl::Status validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& tls_certificate);
+  
+  absl::Status validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
+                                   const std::string& required_prefix,  
+                                   const std::string& usage_name);
 };
 
 using ContextImplSharedPtr = std::shared_ptr<ContextImpl>;

@@ -211,6 +211,14 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       auto& ctx = tls_contexts_[i];
       // Load certificate chain.
       const auto& tls_certificate = tls_certificates[i].get();
+
+      if (config.ntlsEnabled()) {
+        creation_status = validateCertificateUsage(tls_certificate);  
+        if (!creation_status.ok()) {  
+          return;  
+        }  
+      }
+
       if (!tls_certificate.pkcs12().empty()) {
         creation_status = ctx.loadPkcs12(tls_certificate.pkcs12(), tls_certificate.pkcs12Path(),
                                          tls_certificate.password());
@@ -413,6 +421,49 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       SSL_CTX_set_keylog_callback(ctx, keylogCallback);
     }
   }
+}
+
+absl::Status ContextImpl::validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& tls_certificate) {  
+  const auto usage = tls_certificate.certificateUsage();  
+  if(usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::DEFAULT) {
+      return absl::InvalidArgumentError(  
+          fmt::format("certificate_usage must be SIGN or ENCRYPT"));
+  }
+
+  if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::SIGN) {  
+    return validateFilenamePrefix(tls_certificate, "sign", "SIGN");  
+  } else if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::ENCRYPT) {  
+    return validateFilenamePrefix(tls_certificate, "enc", "ENCRYPT");  
+  }  
+    
+  return absl::OkStatus();  
+}  
+  
+absl::Status ContextImpl::validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
+                                   const std::string& required_prefix,  
+                                   const std::string& usage_name) {  
+  
+  if (tls_certificate.has_certificate_chain() && tls_certificate.certificate_chain().has_filename()) {  
+    const std::string& cert_filename = tls_certificate.certificate_chain().filename();  
+    std::string basename = cert_filename.substr(cert_filename.find_last_of("/\\") + 1);  
+    if (!absl::StartsWith(basename, required_prefix)) {  
+      return absl::InvalidArgumentError(  
+          fmt::format("Certificate chain filename '{}' must start with '{}' when certificate_usage is {}",   
+                     basename, required_prefix, usage_name));  
+    }  
+  }  
+  
+  if (tls_certificate.has_private_key() && tls_certificate.private_key().has_filename()) {  
+    const std::string& key_filename = tls_certificate.private_key().filename();  
+    std::string basename = key_filename.substr(key_filename.find_last_of("/\\") + 1);  
+    if (!absl::StartsWith(basename, required_prefix)) {  
+      return absl::InvalidArgumentError(  
+          fmt::format("Private key filename '{}' must start with '{}' when certificate_usage is {}",   
+                     basename, required_prefix, usage_name));  
+    }  
+  }  
+    
+  return absl::OkStatus();  
 }
 
 void ContextImpl::keylogCallback(const SSL* ssl, const char* line) {
