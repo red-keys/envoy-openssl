@@ -22,6 +22,13 @@
 #include "certs/intermediate_ca_2_cert.pem.h"
 
 
+#include "ntls_certs/root_ca_cert.pem.h"
+#include "ntls_certs/client_2_key.pem.h"
+#include "ntls_certs/client_2_cert_chain.pem.h"
+#include "ntls_certs/server_2_key.pem.h"
+#include "ntls_certs/server_2_cert_chain.pem.h"
+
+
 class TempFile {
   public:
 
@@ -338,6 +345,115 @@ TEST(SSLTest, test_SSL_get_peer_full_cert_chain) {
     STACK_OF(X509) *server_certs = SSL_get_peer_full_cert_chain(ssl.get());
     ASSERT_TRUE(server_certs);
     ASSERT_EQ(4, sk_X509_num(server_certs));
+
+    char buf[sizeof(MESSAGE)];
+    ASSERT_EQ(sizeof(MESSAGE), SSL_write(ssl.get(), MESSAGE, sizeof(MESSAGE)));
+    ASSERT_EQ(sizeof(MESSAGE), SSL_read(ssl.get(), buf, sizeof(buf)));
+  }
+
+  server.join();
+}
+
+TEST(SSLTest, test_ntls_SSL_get_peer_full_cert_chain) {
+  TempFile ntls_root_ca_cert_pem        { ntls_root_ca_cert_pem_str };
+  TempFile ntls_client_2_key_pem        { ntls_client_2_key_pem_str };
+  TempFile ntls_client_2_cert_chain_pem { ntls_client_2_cert_chain_pem_str };
+  TempFile ntls_server_2_key_pem        { ntls_server_2_key_pem_str };
+  TempFile ntls_server_2_cert_chain_pem { ntls_server_2_cert_chain_pem_str };
+
+  const char MESSAGE[] { "HELLO" };
+  std::promise<in_port_t> server_port;
+
+  signal(SIGPIPE, SIG_IGN);
+
+  // Start a TLS server
+  std::thread server([&]() {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(NTLS_server_method()));
+
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
+    ASSERT_EQ(1, SSL_CTX_load_verify_locations(ctx.get(), ntls_root_ca_cert_pem.path(), nullptr)) << (ERR_print_errors_fp(stderr), "");
+
+    STACK_OF(X509_NAME) *cert_names { sk_X509_NAME_new_null() };
+    ASSERT_EQ(1, SSL_add_file_cert_subjects_to_stack(cert_names, ntls_root_ca_cert_pem.path()));
+    SSL_CTX_set_client_CA_list(ctx.get(), cert_names);
+
+    //load gm certs
+    SSL_CTX_enable_ntls(ctx.get());
+    bssl::UniquePtr<BIO> cert_bio(BIO_new_mem_buf(ntls_server_2_cert_chain_pem_str, strlen(ntls_server_2_cert_chain_pem_str)));
+    bssl::UniquePtr<X509> cert_chain(PEM_read_bio_X509_AUX(cert_bio.get(), nullptr, nullptr, nullptr));
+    ASSERT_EQ(1, SSL_CTX_use_NTLS_certificate(ctx.get(), cert_chain.get(), 1));
+
+
+    bssl::UniquePtr<BIO> key_bio(BIO_new_mem_buf(ntls_server_2_key_pem_str, strlen(ntls_server_2_key_pem_str)));
+    bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(key_bio.get(), nullptr, nullptr, nullptr));    
+    ASSERT_EQ(1, SSL_CTX_use_NTLS_PrivateKey(ctx.get(), pkey.get(), 1));
+
+    bssl::UniquePtr<SSL> ssl { SSL_new(ctx.get()) };
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    socklen_t addrlen = sizeof(addr);
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    ASSERT_LT(0, sock);
+    ASSERT_EQ(0, bind(sock, (struct sockaddr*)&addr, sizeof(addr)));
+    ASSERT_EQ(0, listen(sock, 1));
+    ASSERT_EQ(0, getsockname(sock, (struct sockaddr*)&addr, &addrlen));
+    server_port.set_value(ntohs(addr.sin_port)); // Tell the client our port number
+    int client = accept(sock, nullptr, nullptr);
+    ASSERT_LT(0, client);
+
+    ASSERT_EQ(1, SSL_set_fd(ssl.get(), client));
+    ASSERT_EQ(1, SSL_accept(ssl.get())) << (ERR_print_errors_fp(stderr), "");
+    ASSERT_EQ(1, SSL_is_server(ssl.get()));
+
+    STACK_OF(X509) *client_certs { SSL_get_peer_full_cert_chain(ssl.get()) };
+    ASSERT_TRUE(client_certs);
+    //ASSERT_EQ(4, sk_X509_num(client_certs));
+
+    char buf[sizeof(MESSAGE)];
+    ASSERT_EQ(sizeof(MESSAGE), SSL_read(ssl.get(), buf, sizeof(buf)));
+    ASSERT_EQ(sizeof(MESSAGE), SSL_write(ssl.get(), MESSAGE, sizeof(MESSAGE)));
+
+    SSL_shutdown(ssl.get());
+    close(client);
+    close(sock);
+  });
+
+  {
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(NTLS_client_method()));
+
+    SSL_CTX_set_verify(ctx.get(), SSL_VERIFY_PEER, nullptr);
+    ASSERT_EQ(1, SSL_CTX_load_verify_locations(ctx.get(), ntls_root_ca_cert_pem.path(), nullptr));
+
+    //load gm certs
+    SSL_CTX_enable_ntls(ctx.get());
+    bssl::UniquePtr<BIO> cert_bio(BIO_new_mem_buf(ntls_client_2_cert_chain_pem_str, strlen(ntls_client_2_cert_chain_pem_str)));
+    bssl::UniquePtr<X509> cert_chain(PEM_read_bio_X509_AUX(cert_bio.get(), nullptr, nullptr, nullptr));
+    ASSERT_EQ(1, SSL_CTX_use_NTLS_certificate(ctx.get(), cert_chain.get(), 1));
+
+    bssl::UniquePtr<BIO> key_bio(BIO_new_mem_buf(ntls_client_2_key_pem_str, strlen(ntls_client_2_key_pem_str)));
+    bssl::UniquePtr<EVP_PKEY> pkey(PEM_read_bio_PrivateKey(key_bio.get(), nullptr, nullptr, nullptr));    
+    ASSERT_EQ(1, SSL_CTX_use_NTLS_PrivateKey(ctx.get(), pkey.get(), 1));
+
+    bssl::UniquePtr<SSL> ssl (SSL_new(ctx.get()));
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    addr.sin_port = htons(server_port.get_future().get());
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    ASSERT_EQ(0, connect(sock, (const struct sockaddr *)&addr, sizeof(addr)));
+    ASSERT_EQ(1, SSL_set_fd(ssl.get(), sock));
+    ASSERT_TRUE(SSL_connect(ssl.get()) > 0) << (ERR_print_errors_fp(stderr), "");
+
+    STACK_OF(X509) *server_certs = SSL_get_peer_full_cert_chain(ssl.get());
+    ASSERT_TRUE(server_certs);
+    //ASSERT_EQ(4, sk_X509_num(server_certs));
 
     char buf[sizeof(MESSAGE)];
     ASSERT_EQ(sizeof(MESSAGE), SSL_write(ssl.get(), MESSAGE, sizeof(MESSAGE)));
@@ -1636,3 +1752,4 @@ TEST(SSLTest, test_SSL_CTX_set_custom_verify_alert_codes) {
     ASSERT_STREQ(alert_string, static_cast<char*>(SSL_get_app_data(server_ssl.get())));
   }
 }
+
