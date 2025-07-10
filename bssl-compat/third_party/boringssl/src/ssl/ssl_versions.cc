@@ -70,7 +70,7 @@ static const uint16_t kNTLSVersions[] = {
 
 
 static Span<const uint16_t> get_method_versions(
-    const SSL_PROTOCOL_METHOD *method) {   
+    const SSL_PROTOCOL_METHOD *method) {
   return method->is_dtls ? Span<const uint16_t>(kDTLSVersions)
                          : Span<const uint16_t>(kTLSVersions);
 }
