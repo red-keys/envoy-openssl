@@ -120,8 +120,8 @@ def envoy_dependency_imports(go_version = GO_VERSION, jq_version = JQ_VERSION, y
     go_repository(
         name = "org_golang_google_protobuf",
         importpath = "google.golang.org/protobuf",
-        sum = "h1:d0NfwRgPtno5B1Wa6L2DAG+KivqkdutMf1UhdNx175w=",
-        version = "v1.28.1",
+		urls = ["https://goproxy.cn/google.golang.org/protobuf/@v/v1.30.0.info"],
+		sha256 = "9dd5235aebc3728f593e48328158ba766501b61a8ca1195026a040bcf85dd63b",
         build_external = "external",
     )
     go_repository(
@@ -145,8 +145,8 @@ def envoy_dependency_imports(go_version = GO_VERSION, jq_version = JQ_VERSION, y
     go_repository(
         name = "com_github_lyft_protoc_gen_star_v2",
         importpath = "github.com/lyft/protoc-gen-star/v2",
-        sum = "h1:keaAo8hRuAT0O3DfJ/wM3rufbAjGeJ1lAtWZHDjKGB0=",
-        version = "v2.0.1",
+        urls = ["https://goproxy.cn/github.com/lyft/protoc-gen-star/v2/@v/v2.0.1.info"],
+		sha256 = "7e9736e7a1085ae5a5e6386118623f949d90fb1caa17614ce9826ab8b6340065",
         build_external = "external",
         # project_url = "https://pkg.go.dev/github.com/lyft/protoc-gen-star",
         # last_update = "2023-01-06"
