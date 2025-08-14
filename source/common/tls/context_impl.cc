@@ -786,7 +786,8 @@ absl::Status TlsContext::loadCertificateChain(const std::string& data,
   RELEASE_ASSERT(bio != nullptr, "");
   cert_chain_.reset(PEM_read_bio_X509_AUX(bio.get(), nullptr, nullptr, nullptr));
   int ntls_switch = ntls_enabled?1:0;
-  if (cert_chain_ == nullptr || !SSL_CTX_use_NTLS_certificate(ssl_ctx_.get(), cert_chain_.get(), ntls_switch)) {
+
+  if (cert_chain_ == nullptr || !SSL_CTX_use_NTLS_certificate(ssl_ctx_.get(), cert_chain_.get(), ntls_switch, X509_get_key_usage(cert_chain_.get()))) {
     logSslErrorChain();
     return absl::InvalidArgumentError(
         absl::StrCat("Failed to load certificate chain from ", cert_chain_file_path_));

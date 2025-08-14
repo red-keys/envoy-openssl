@@ -168,6 +168,7 @@ envoy_cc_library(
         "//source/extensions/filters/http/istio_stats",
         "//source/extensions/filters/http/peer_metadata:filter_lib",
         "//source/extensions/filters/network/metadata_exchange:config_lib",
+        "//source/extensions/filters/network/istio_authn:config_lib",
         "//source/extensions/transport_sockets/tls:config",
         "//source/common/listener_manager:listener_manager_lib",
         "//source/extensions/listener_managers/validation_listener_manager:validation_listener_manager_lib",

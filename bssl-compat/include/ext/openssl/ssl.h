@@ -10,7 +10,7 @@ OPENSSL_EXPORT int ext_SSL_get_all_async_fds(SSL *s, OSSL_ASYNC_FD *fds, size_t 
 
 OPENSSL_EXPORT void SSL_CTX_enable_ntls(SSL_CTX *ctx);
 
-OPENSSL_EXPORT int SSL_CTX_use_NTLS_certificate(SSL_CTX *ctx, X509 *x509, int ntls_enabled);
+OPENSSL_EXPORT int SSL_CTX_use_NTLS_certificate(SSL_CTX *ctx, X509 *x509, int ntls_enabled, int key_usage);
 
 OPENSSL_EXPORT int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled);
 
