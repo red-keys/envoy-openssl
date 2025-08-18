@@ -314,10 +314,12 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
 #endif
         SSL_CTX_set_private_key_method(ctx.ssl_ctx_.get(), private_key_method.get());
       } else if (!tls_certificate.privateKey().empty()) {
+        X509* cert = SSL_CTX_get0_certificate(ctx.ssl_ctx_.get());  
+        uint32_t key_usage = X509_get_key_usage(cert); 
         // Load private key.
         creation_status =
             ctx.loadPrivateKey(tls_certificate.privateKey(), tls_certificate.privateKeyPath(),
-                               tls_certificate.password(), config.ntlsEnabled());
+                               tls_certificate.password(), config.ntlsEnabled(), key_usage);
         if (!creation_status.ok()) {
           return;
         }
@@ -817,14 +819,14 @@ absl::Status TlsContext::loadCertificateChain(const std::string& data,
 }
 
 absl::Status TlsContext::loadPrivateKey(const std::string& data, const std::string& data_path,
-                                        const std::string& password, bool ntls_enabled) {
+                                        const std::string& password, bool ntls_enabled, uint32_t key_usage) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(const_cast<char*>(data.data()), data.size()));
   RELEASE_ASSERT(bio != nullptr, "");
   bssl::UniquePtr<EVP_PKEY> pkey(
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr,
                               !password.empty() ? const_cast<char*>(password.c_str()) : nullptr));
   int ntls_switch = ntls_enabled?1:0;
-  if (pkey == nullptr || !SSL_CTX_use_NTLS_PrivateKey(ssl_ctx_.get(), pkey.get(), ntls_switch)) {
+  if (pkey == nullptr || !SSL_CTX_use_NTLS_PrivateKey(ssl_ctx_.get(), pkey.get(), ntls_switch, key_usage)) {
     return absl::InvalidArgumentError(fmt::format(
         "Failed to load private key from {}, Cause: {}", data_path,
         Extensions::TransportSockets::Tls::Utility::getLastCryptoError().value_or("unknown")));

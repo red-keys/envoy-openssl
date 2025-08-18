@@ -1,25 +1,42 @@
 #include <openssl/ssl.h>
 #include <ossl.h>
 
+#define X509v3_KU_DIGITAL_SIGNATURE 0x0080
+#define X509v3_KU_KEY_CERT_SIGN 0x0004
+#define X509v3_KU_CRL_SIGN 0x0002
+#define X509v3_KU_KEY_ENCIPHERMENT 0x0020
+#define X509v3_KU_DATA_ENCIPHERMENT 0x0010
 
 /*
  * https://github.com/google/boringssl/blob/098695591f3a2665fccef83a3732ecfc99acdcdd/src/include/openssl/ssl.h#L867
  * https://www.openssl.org/docs/man3.0/man3/SSL_CTX_use_PrivateKey.html
  */
-extern "C" int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled) {
-  if(ntls_enabled) {
-    if(ossl.ossl_SSL_CTX_use_sign_PrivateKey(ctx, pkey) == 0)
-    {
-      return 0;
-    }
-    if(ossl.ossl_SSL_CTX_use_enc_PrivateKey(ctx, pkey) == 0)
-    {
-      return 0;
-    }
-    return 1;
-  }
-  else
-  {
-    return (ossl.ossl_SSL_CTX_use_PrivateKey(ctx, pkey) == 1) ? 1 : 0;
-  }
+extern "C" int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled, uint32_t key_usage) {
+  if(ntls_enabled) {  
+    int sign_set = 0, enc_set = 0;  
+      
+    if((key_usage & X509v3_KU_DIGITAL_SIGNATURE)   
+      || (key_usage & X509v3_KU_KEY_CERT_SIGN)   
+      || (key_usage & X509v3_KU_CRL_SIGN)) {  
+      if(0 == ossl.ossl_SSL_CTX_use_sign_PrivateKey(ctx, pkey)) {  
+        return 0;  
+      }  
+      sign_set = 1;  
+    }  
+       
+    if((key_usage & X509v3_KU_KEY_ENCIPHERMENT)   
+      || (key_usage & X509v3_KU_DATA_ENCIPHERMENT)) {  
+      if(0 == ossl.ossl_SSL_CTX_use_enc_PrivateKey(ctx, pkey)) {  
+        return 0;  
+      }  
+      enc_set = 1;  
+    }  
+    
+    if(sign_set || enc_set) {  
+      return 1;  
+    }  
+  }  
+  
+  int ret = ossl.ossl_SSL_CTX_use_PrivateKey(ctx, pkey);  
+  return (ret == 1) ? 1 : 0;  
 }

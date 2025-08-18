@@ -63,7 +63,7 @@ struct TlsContext {
   }
   absl::Status loadCertificateChain(const std::string& data, const std::string& data_path, bool ntls_enabled);
   absl::Status loadPrivateKey(const std::string& data, const std::string& data_path,
-                              const std::string& password, bool ntls_enabled);
+                              const std::string& password, bool ntls_enabled, uint32_t key_usage);
   absl::Status loadPkcs12(const std::string& data, const std::string& data_path,
                           const std::string& password);
   absl::Status checkPrivateKey(const bssl::UniquePtr<EVP_PKEY>& pkey, const std::string& key_path);
