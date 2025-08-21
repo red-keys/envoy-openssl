@@ -97,7 +97,7 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       config.certificateValidationContext(), stats_, factory_context_);
 
   const auto tls_certificates = config.tlsCertificates();
-  tls_contexts_.resize(std::max(static_cast<size_t>(1), tls_certificates.size()));
+    tls_contexts_.resize(std::max(static_cast<size_t>(1), tls_certificates.size()));
 
   std::vector<SSL_CTX*> ssl_contexts(tls_contexts_.size());
   for (size_t i = 0; i < tls_contexts_.size(); i++) {
@@ -222,9 +222,21 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
         creation_status = ctx.loadPkcs12(tls_certificate.pkcs12(), tls_certificate.pkcs12Path(),
                                          tls_certificate.password());
       } else {
-        creation_status = ctx.loadCertificateChain(tls_certificate.certificateChain(),
-                                                   tls_certificate.certificateChainPath(),
-                                                   config.ntlsEnabled());
+        if (config.ntlsEnabled()) {
+          const auto& ntls_sign_certificate = tls_certificates[0].get();
+          const auto& ntls_enc_certificate = tls_certificates[1].get();
+          creation_status = ctx.loadCertificateChain(ntls_sign_certificate.certificateChain(),
+                                                    ntls_sign_certificate.certificateChainPath(),
+                                                    config.ntlsEnabled());
+          creation_status = ctx.loadCertificateChain(ntls_enc_certificate.certificateChain(),
+                                                    ntls_enc_certificate.certificateChainPath(),
+                                                    config.ntlsEnabled());
+        }
+        else {
+          creation_status = ctx.loadCertificateChain(tls_certificate.certificateChain(),
+                                                     tls_certificate.certificateChainPath(),
+                                                     config.ntlsEnabled());
+        }
       }
       if (!creation_status.ok()) {
         return;
@@ -316,12 +328,31 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       } else if (!tls_certificate.privateKey().empty()) {
         X509* cert = SSL_CTX_get0_certificate(ctx.ssl_ctx_.get());  
         uint32_t key_usage = X509_get_key_usage(cert); 
-        // Load private key.
-        creation_status =
+        if (config.ntlsEnabled()) {
+          const auto& ntls_sign_certificate = tls_certificates[0].get();
+          const auto& ntls_enc_certificate = tls_certificates[1].get();
+          // Load private key.
+          creation_status =
+            ctx.loadPrivateKey(ntls_sign_certificate.privateKey(), ntls_sign_certificate.privateKeyPath(),
+                               ntls_sign_certificate.password(), config.ntlsEnabled(), 0x0080);//X509v3_KU_DIGITAL_SIGNATURE
+          if (!creation_status.ok()) {
+            return;
+          }
+          
+          creation_status =
+            ctx.loadPrivateKey(ntls_enc_certificate.privateKey(), ntls_enc_certificate.privateKeyPath(),
+                               ntls_enc_certificate.password(), config.ntlsEnabled(), 0x0020);//X509v3_KU_KEY_ENCIPHERMENT
+          if (!creation_status.ok()) {
+            return;
+          }
+        } else {
+          // Load private key.
+          creation_status =
             ctx.loadPrivateKey(tls_certificate.privateKey(), tls_certificate.privateKeyPath(),
                                tls_certificate.password(), config.ntlsEnabled(), key_usage);
-        if (!creation_status.ok()) {
-          return;
+          if (!creation_status.ok()) {
+            return;
+          }
         }
       }
 
