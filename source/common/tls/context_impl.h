@@ -170,7 +170,8 @@ protected:
   AccessLog::AccessLogFileSharedPtr tls_keylog_file_;
 
 private:
-  absl::Status validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& tls_certificate);
+  absl::Status validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& ntls_sign_certificate,
+                                   const Envoy::Ssl::TlsCertificateConfig& ntls_enc_certificate);
   
   absl::Status validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
                                    const std::string& required_prefix,  

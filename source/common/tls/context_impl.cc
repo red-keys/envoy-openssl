@@ -205,18 +205,18 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
   }
 #endif
 
+  if (config.ntlsEnabled()) {
+    creation_status = validateCertificateUsage(tls_certificates[0], tls_certificates[1]);
+    if (!creation_status.ok()) {
+      return;
+    }
+  }
+
   if (!capabilities_.provides_certificates) {
     for (uint32_t i = 0; i < tls_certificates.size(); ++i) {
       auto& ctx = tls_contexts_[i];
       // Load certificate chain.
       const auto& tls_certificate = tls_certificates[i].get();
-
-      if (config.ntlsEnabled()) {
-        creation_status = validateCertificateUsage(tls_certificate);  
-        if (!creation_status.ok()) {  
-          return;  
-        }  
-      }
 
       if (!tls_certificate.pkcs12().empty()) {
         creation_status = ctx.loadPkcs12(tls_certificate.pkcs12(), tls_certificate.pkcs12Path(),
@@ -455,21 +455,28 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
   }
 }
 
-absl::Status ContextImpl::validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& tls_certificate) {  
-  auto usage = tls_certificate.certificateUsage();
-  if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::DEFAULT) {
-    return absl::InvalidArgumentError(  
-      fmt::format("certificate_usage must be SIGN or ENCRYPT"));
+absl::Status ContextImpl::validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& ntls_sign_certificate,
+                                   const Envoy::Ssl::TlsCertificateConfig& ntls_enc_certificate) {
+  auto sign_usage = ntls_sign_certificate.certificateUsage();
+  auto enc_usage = ntls_enc_certificate.certificateUsage();
+  if ( sign_usage != envoy::extensions::transport_sockets::tls::v3::TlsCertificate::SIGN ||
+      enc_usage != envoy::extensions::transport_sockets::tls::v3::TlsCertificate::ENCRYPT) {
+    return absl::InvalidArgumentError(
+      fmt::format("The first certificate_usage​​ parameter must be SIGN, and the second ​​certificate_usage​​ parameter must be ENCRYPT."));
   }
 
-  if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::SIGN) {  
-    return validateFilenamePrefix(tls_certificate, "sign", "SIGN");  
-  } else if (usage == envoy::extensions::transport_sockets::tls::v3::TlsCertificate::ENCRYPT) {  
-    return validateFilenamePrefix(tls_certificate, "enc", "ENCRYPT");  
-  }  
-    
-  return absl::OkStatus();  
-}  
+  auto status = validateFilenamePrefix(ntls_sign_certificate, "sign", "SIGN");  
+  if (!status.ok()) {  
+    return status;  
+  }
+  
+  status = validateFilenamePrefix(ntls_enc_certificate, "enc", "ENCRYPT");  
+  if (!status.ok()) {  
+    return status;  
+  }
+  
+  return absl::OkStatus();
+}
   
 absl::Status ContextImpl::validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
                                                  const std::string& required_prefix,  
