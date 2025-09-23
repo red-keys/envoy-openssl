@@ -12,7 +12,7 @@ SCRATCH_DIR="../tmp"
 
 # Create our extended builder image, based on upstream's builder image.
 docker build --network host --iidfile "${SCRATCH_DIR}/iid" -f - "${SCRATCH_DIR}" << EOF
-    FROM envoyproxy/envoy-build-ubuntu:latest
+    FROM envoyproxy/envoy-build-ubuntu:f94a38f62220a2b017878b790b6ea98a0f6c5f9c
 
     # Install the missing Kitware public key
     RUN wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc | gpg --dearmor - > /usr/share/keyrings/kitware-archive-keyring.gpg
@@ -26,14 +26,16 @@ docker build --network host --iidfile "${SCRATCH_DIR}/iid" -f - "${SCRATCH_DIR}"
     RUN apt install -y vim
     RUN apt-get install -y libtool autoconf automake pkg-config libpsl-dev
 
+    ENV ENVOY_STDLIB=libstdc++
+
     # Install OpenSSL 3.0.x
     ENV OPENSSL_VERSION=3.0.3
     ENV OPENSSL_ROOTDIR=/usr/local/tongsuo
     RUN apt install -y build-essential checkinstall zlib1g-dev
     RUN apt install perl
-    RUN wget -qO- https://github.com/Tongsuo-Project/Tongsuo/archive/refs/tags/8.4.0.tar.gz | tar xz -C /
+    RUN git clone -b envoy-tongsuo https://github.com/red-keys/Tongsuo.git /Tongsuo
 
-    RUN cd Tongsuo-8.4.0 && ./Configure --prefix=/usr/local/tongsuo enable-ntls && make -j && make install
+    RUN cd Tongsuo && ./Configure --prefix=/usr/local/tongsuo enable-ntls && make -j && make install
     RUN echo "/usr/local/tongsuo/lib64" > /etc/ld.so.conf.d/tongsuo.conf
     RUN ldconfig
 
@@ -43,11 +45,13 @@ docker build --network host --iidfile "${SCRATCH_DIR}/iid" -f - "${SCRATCH_DIR}"
 
 
     # 下载envoy-openssl源码
-    RUN git clone https://github.com/envoyproxy/envoy-openssl.git /source
+    RUN git clone -b envoy-tongsuo https://github.com/red-keys/envoy-openssl.git /source
     WORKDIR /source
 
     # 创建build目录
     RUN mkdir -p /build
+    ENV ENVOY_DOCKER_BUILD_DIR=/build
+    ENV BUILD_DIR=/build
 EOF
 
 
