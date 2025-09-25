@@ -183,6 +183,7 @@ public:
   MOCK_METHOD(const std::string&, password, (), (const));
   MOCK_METHOD(const std::string&, passwordPath, (), (const));
   MOCK_METHOD(Envoy::Ssl::PrivateKeyMethodProviderSharedPtr, privateKeyMethod, (), (const));
+  MOCK_METHOD(envoy::extensions::transport_sockets::tls::v3::TlsCertificate::CertificateUsage, certificateUsage, (), (const));
 };
 
 class MockCertificateValidationContextConfig : public CertificateValidationContextConfig {

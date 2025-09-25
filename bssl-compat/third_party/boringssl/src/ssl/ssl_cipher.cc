@@ -1461,6 +1461,10 @@ int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
 }
 
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {
+  if (cipher->algorithm_mkey == SSL_kSM2 )
+  {
+    return NTLS1_1_VERSION;
+  }
   if (cipher->algorithm_mkey == SSL_kGENERIC ||
       cipher->algorithm_auth == SSL_aGENERIC) {
     return TLS1_3_VERSION;

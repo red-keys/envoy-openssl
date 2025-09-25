@@ -6,6 +6,7 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl TLS_method \
   --uncomment-func-decl OPENSSL_init_ssl \
 	--uncomment-func-decl DTLS_method \
+  --uncomment-func-decl NTLS_method \
   --uncomment-func-decl SSL_write \
   --uncomment-func-decl SSL_version \
   --uncomment-func-decl SSL_shutdown \
@@ -56,8 +57,10 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl SSL_CTX_check_private_key \
   --uncomment-func-decl SSL_CTX_set_tmp_ecdh \
   --uncomment-func-decl SSL_get0_next_proto_negotiated \
+  --uncomment-func-decl SSL_CTX_use_NTLS_PrivateKey \
   --uncomment-func-decl SSL_CTX_use_PrivateKey \
   --uncomment-func-decl SSL_CTX_use_PrivateKey_file \
+  --uncomment-func-decl SSL_CTX_use_NTLS_certificate \
   --uncomment-func-decl SSL_CTX_use_certificate \
   --uncomment-func-decl SSL_CTX_use_certificate_file \
   --uncomment-func-decl SSL_CTX_set1_curves_list \
@@ -133,6 +136,7 @@ uncomment.sh "$1" --comment -h \
 	--uncomment-func-decl SSL_free \
 	--uncomment-macro-redef 'SSL_ERROR_[[:alnum:]_]*' \
 	--uncomment-macro-redef '\(DTLS1\|DTLS1_2\|SSL3\|TLS1\|TLS1_1\|TLS1_2\|TLS1_3\)_VERSION' \
+  --uncomment-macro-redef 'NTLS1_1_VERSION' \
 	--uncomment-macro-redef '\(DTLS1\|SSL3\)_VERSION_MAJOR' \
   --uncomment-func-decl SSL_CTX_get_min_proto_version \
   --uncomment-func-decl SSL_CTX_get_max_proto_version \
@@ -178,6 +182,8 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl SSL_CIPHER_get_rfc_name \
   --uncomment-func-decl TLS_server_method \
   --uncomment-func-decl TLS_client_method \
+  --uncomment-func-decl NTLS_server_method \
+  --uncomment-func-decl NTLS_client_method \
   --uncomment-func-decl i2d_SSL_SESSION \
   --uncomment-func-decl d2i_SSL_SESSION \
   --uncomment-func-decl SSL_CTX_set1_sigalgs_list \
@@ -197,5 +203,6 @@ uncomment.sh "$1" --comment -h \
   --uncomment-func-decl SSL_send_fatal_alert \
   --uncomment-func-decl SSL_alert_desc_string_long \
   --uncomment-func-decl SSL_CTX_get_session_cache_mode \
+  --uncomment-func-decl SSL_CTX_enable_ntls \
 
 

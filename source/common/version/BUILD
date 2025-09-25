@@ -58,7 +58,7 @@ envoy_cc_library(
 envoy_cc_library(
     name = "version_lib",
     srcs = ["version.cc"],
-    copts = ["-DENVOY_SSL_VERSION=\\\"OpenSSL\\\""],
+    copts = ["-DENVOY_SSL_VERSION=\\\"OpenSSL(Tongsuo)\\\""],
     external_deps = ["ssl"],
     tags = ["notidy"],
     deps = [

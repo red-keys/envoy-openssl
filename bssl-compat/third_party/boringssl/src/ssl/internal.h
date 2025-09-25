@@ -532,6 +532,9 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_kPSK 0x00000004u
 #define SSL_kGENERIC 0x00000008u
 
+# define SSL_kSM2                0x00000400U
+# define SSL_kSM2DHE             0x00000800U
+
 // Bits for |algorithm_auth| (server authentication).
 #define SSL_aRSA 0x00000001u
 #define SSL_aECDSA 0x00000002u

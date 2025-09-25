@@ -61,9 +61,9 @@ struct TlsContext {
   Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
     return private_key_method_provider_;
   }
-  absl::Status loadCertificateChain(const std::string& data, const std::string& data_path);
+  absl::Status loadCertificateChain(const std::string& data, const std::string& data_path, bool ntls_enabled);
   absl::Status loadPrivateKey(const std::string& data, const std::string& data_path,
-                              const std::string& password);
+                              const std::string& password, bool ntls_enabled, uint32_t key_usage);
   absl::Status loadPkcs12(const std::string& data, const std::string& data_path,
                           const std::string& password);
   absl::Status checkPrivateKey(const bssl::UniquePtr<EVP_PKEY>& pkey, const std::string& key_path);
@@ -168,6 +168,14 @@ protected:
   const Network::Address::IpList tls_keylog_local_;
   const Network::Address::IpList tls_keylog_remote_;
   AccessLog::AccessLogFileSharedPtr tls_keylog_file_;
+
+private:
+  absl::Status validateCertificateUsage(const Envoy::Ssl::TlsCertificateConfig& ntls_sign_certificate,
+                                   const Envoy::Ssl::TlsCertificateConfig& ntls_enc_certificate);
+  
+  absl::Status validateFilenamePrefix(const Envoy::Ssl::TlsCertificateConfig& tls_certificate,  
+                                   const std::string& required_prefix,  
+                                   const std::string& usage_name);
 };
 
 using ContextImplSharedPtr = std::shared_ptr<ContextImpl>;

@@ -5,6 +5,7 @@
 
 #include "envoy/common/pure.h"
 #include "envoy/ssl/private_key/private_key.h"
+#include "envoy/extensions/transport_sockets/tls/v3/common.pb.h"
 
 namespace Envoy {
 namespace Ssl {
@@ -23,6 +24,9 @@ public:
    * certificate chain was inlined.
    */
   virtual const std::string& certificateChainPath() const PURE;
+
+
+  virtual envoy::extensions::transport_sockets::tls::v3::TlsCertificate::CertificateUsage certificateUsage() const PURE;
 
   /**
    * @return a string of private key.

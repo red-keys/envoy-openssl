@@ -180,6 +180,8 @@ extern "C" {
 // multiple threads. Once shared, functions which change the |SSL_CTX|'s
 // configuration may not be used.
 
+OPENSSL_EXPORT const SSL_METHOD *NTLS_method(void);
+
 // TLS_method is the |SSL_METHOD| used for TLS connections.
 OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 
@@ -647,6 +649,8 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define TLS1_2_VERSION 0x0303
 #define TLS1_3_VERSION 0x0304
 
+#define NTLS1_1_VERSION 0x0101
+
 #define DTLS1_VERSION 0xfeff
 #define DTLS1_2_VERSION 0xfefd
 
@@ -852,6 +856,7 @@ OPENSSL_EXPORT void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx,
 // SSL_CTX_use_certificate sets |ctx|'s leaf certificate to |x509|. It returns
 // one on success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x509);
+OPENSSL_EXPORT int SSL_CTX_use_NTLS_certificate(SSL_CTX *ctx, X509 *x509, int ntls_enabled, uint32_t key_usage);
 
 // SSL_use_certificate sets |ssl|'s leaf certificate to |x509|. It returns one
 // on success and zero on failure.
@@ -860,6 +865,7 @@ OPENSSL_EXPORT int SSL_use_certificate(SSL *ssl, X509 *x509);
 // SSL_CTX_use_PrivateKey sets |ctx|'s private key to |pkey|. It returns one on
 // success and zero on failure.
 OPENSSL_EXPORT int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey);
+OPENSSL_EXPORT int SSL_CTX_use_NTLS_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey, int ntls_enabled, uint32_t key_usage);
 
 // SSL_use_PrivateKey sets |ssl|'s private key to |pkey|. It returns one on
 // success and zero on failure.
@@ -2696,6 +2702,8 @@ OPENSSL_EXPORT void SSL_set0_client_CAs(SSL *ssl,
 // It takes ownership of |name_list|.
 OPENSSL_EXPORT void SSL_CTX_set0_client_CAs(SSL_CTX *ctx,
                                             STACK_OF(CRYPTO_BUFFER) *name_list);
+
+OPENSSL_EXPORT void SSL_CTX_enable_ntls(SSL_CTX *ctx);
 
 // SSL_get_client_CA_list returns |ssl|'s client certificate CA list. If |ssl|
 // has not been configured as a client, this is the list configured by
@@ -4571,6 +4579,8 @@ OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
 
 // These client- and server-specific methods call their corresponding generic
 // methods.
+OPENSSL_EXPORT const SSL_METHOD *NTLS_server_method(void);
+OPENSSL_EXPORT const SSL_METHOD *NTLS_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLS_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLS_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
