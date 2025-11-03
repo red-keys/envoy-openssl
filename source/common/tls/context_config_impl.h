@@ -48,8 +48,11 @@ public:
   AccessLog::AccessLogManager& accessLogManager() const override {
     return factory_context_.serverFactoryContext().accessLogManager();
   }
-
+ 
   bool isReady() const override {
+    if (ntls_enabled_) {
+      return isNtlsReady();
+    }
     const bool tls_is_ready =
         (tls_certificate_providers_.empty() || !tls_certificate_configs_.empty());
     const bool combined_cvc_is_ready =
@@ -95,6 +98,17 @@ protected:
   Server::ServerLifecycleNotifier& lifecycle_notifier_;
 
 private:
+
+  bool isNtlsReady() const {
+    const bool tls_is_ready =  
+        (tls_certificate_providers_.empty() || tls_certificate_configs_.size() >= 2);
+    const bool combined_cvc_is_ready =
+        (default_cvc_ == nullptr || validation_context_config_ != nullptr);
+    const bool cvc_is_ready = (certificate_validation_context_provider_ == nullptr ||
+                               default_cvc_ != nullptr || validation_context_config_ != nullptr);
+    return tls_is_ready && combined_cvc_is_ready && cvc_is_ready;
+  }
+  
   static unsigned tlsVersionFromProto(
       const envoy::extensions::transport_sockets::tls::v3::TlsParameters::TlsProtocol& version,
       unsigned default_version);
