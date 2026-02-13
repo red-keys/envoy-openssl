@@ -101,6 +101,7 @@ RUNTIME_GUARD(envoy_reloadable_features_udp_set_do_not_fragment);
 RUNTIME_GUARD(envoy_reloadable_features_udp_socket_apply_aggregated_read_limit);
 RUNTIME_GUARD(envoy_reloadable_features_uhv_allow_malformed_url_encoding);
 RUNTIME_GUARD(envoy_reloadable_features_upstream_remote_address_use_connection);
+RUNTIME_GUARD(envoy_reloadable_features_uri_template_match_on_asterisk);
 RUNTIME_GUARD(envoy_reloadable_features_use_config_in_happy_eyeballs);
 RUNTIME_GUARD(envoy_reloadable_features_use_filter_manager_state_for_downstream_end_stream);
 RUNTIME_GUARD(envoy_reloadable_features_use_http_client_to_fetch_aws_credentials);
@@ -119,6 +120,7 @@ RUNTIME_GUARD(envoy_restart_features_quic_handle_certs_with_shared_tls_code);
 RUNTIME_GUARD(envoy_restart_features_use_eds_cache_for_ads);
 RUNTIME_GUARD(envoy_restart_features_use_fast_protobuf_hash);
 RUNTIME_GUARD(envoy_reloadable_features_enable_intermediate_ca);
+RUNTIME_GUARD(envoy_restart_features_validate_http3_pseudo_headers);
 
 // Begin false flags. Most of them should come with a TODO to flip true.
 

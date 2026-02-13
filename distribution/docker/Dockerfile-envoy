@@ -1,11 +1,11 @@
 ARG BUILD_OS=ubuntu
 ARG BUILD_TAG=22.04
-ARG BUILD_SHA=ed1544e454989078f5dec1bfdabd8c5cc9c48e0705d07b678ab6ae3fb61952d2
+ARG BUILD_SHA=1aa979d85661c488ce030ac292876cf6ed04535d3a237e49f61542d8e5de5ae0
 ARG ENVOY_VRP_BASE_IMAGE=envoy-base
 
 
 FROM scratch AS binary
-COPY ci/docker-entrypoint.sh /
+COPY distribution/docker/docker-entrypoint.sh /
 ADD configs/envoyproxy_io_proxy.yaml /etc/envoy/envoy.yaml
 # See https://github.com/docker/buildx/issues/510 for why this _must_ be this way
 ARG TARGETPLATFORM
@@ -59,10 +59,12 @@ COPY --chown=0:0 --chmod=755 \
 
 
 # STAGE: envoy-distroless
-FROM gcr.io/distroless/base-nossl-debian12:nonroot@sha256:462657c8bb91f01a95cb1aabdd13d9fd2b816ac2f9fb7fe52ff07bfe50a03b38 AS envoy-distroless
+FROM gcr.io/distroless/base-nossl-debian12:nonroot@sha256:8981b63f968e829d21351ea9d28cc21127e5f034707f1d8483d2993d9577be0b AS envoy-distroless
 EXPOSE 10000
 ENTRYPOINT ["/usr/local/bin/envoy"]
 CMD ["-c", "/etc/envoy/envoy.yaml"]
+COPY --from=binary --chown=0:0 --chmod=755 \
+    /etc/envoy /etc/envoy
 COPY --from=binary --chown=0:0 --chmod=644 \
     /etc/envoy/envoy.yaml /etc/envoy/envoy.yaml
 COPY --from=binary --chown=0:0 --chmod=755 \
