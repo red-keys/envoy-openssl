@@ -104,6 +104,14 @@ INSTANTIATE_TEST_SUITE_P(IpVersions, MultiplexedIntegrationTestWithSimulatedTime
                              {Http::CodecType::HTTP1})),
                          HttpProtocolIntegrationTest::protocolTestParamsToString);
 
+class MultiplexedIntegrationTestWithSimulatedTimeHttp2Only : public Event::TestUsingSimulatedTime,
+                                                             public MultiplexedIntegrationTest {};
+
+INSTANTIATE_TEST_SUITE_P(IpVersions, MultiplexedIntegrationTestWithSimulatedTimeHttp2Only,
+                         testing::ValuesIn(HttpProtocolIntegrationTest::getProtocolTestParams(
+                             {Http::CodecType::HTTP2}, {Http::CodecType::HTTP2})),
+                         HttpProtocolIntegrationTest::protocolTestParamsToString);
+
 TEST_P(MultiplexedIntegrationTest, RouterRequestAndResponseWithBodyNoBuffer) {
   testRouterRequestAndResponseWithBody(1024, 512, false, false);
 }
@@ -1157,7 +1165,7 @@ TEST_P(MultiplexedIntegrationTestWithSimulatedTime, GoAwayAfterTooManyResets) {
   test_server_->waitForCounterEq("http.config_test.downstream_rq_too_many_premature_resets", 1);
 }
 
-TEST_P(MultiplexedIntegrationTestWithSimulatedTime, GoAwayQuicklyAfterTooManyResets) {
+TEST_P(MultiplexedIntegrationTestWithSimulatedTimeHttp2Only, GoAwayQuicklyAfterTooManyResets) {
   EXCLUDE_DOWNSTREAM_HTTP3; // Need to wait for the server to reset the stream
                             // before opening new one.
   const int total_streams = 100;
@@ -1180,6 +1188,67 @@ TEST_P(MultiplexedIntegrationTestWithSimulatedTime, GoAwayQuicklyAfterTooManyRes
   // Envoy should disconnect client due to premature reset check
   ASSERT_TRUE(codec_client_->waitForDisconnect());
   test_server_->waitForCounterEq("http.config_test.downstream_rq_rx_reset", num_reset_streams);
+  test_server_->waitForCounterEq("http.config_test.downstream_rq_too_many_premature_resets", 1);
+}
+
+TEST_P(MultiplexedIntegrationTestWithSimulatedTimeHttp2Only, TooManyRequestResetAndNoRecursion) {
+  if (downstreamProtocol() != Http::CodecType::HTTP2 ||
+      upstreamProtocol() != Http::CodecType::HTTP2) {
+    // This test is only valid for HTTP/2 and HTTP/3.
+    return;
+  }
+
+  config_helper_.addConfigModifier([](envoy::config::bootstrap::v3::Bootstrap& bootstrap) {
+    bootstrap.mutable_static_resources()
+        ->mutable_clusters(0)
+        ->mutable_circuit_breakers()
+        ->add_thresholds()
+        ->mutable_max_requests()
+        ->set_value(60000);
+  });
+
+  config_helper_.addRuntimeOverride("overload.premature_reset_total_stream_count",
+                                    absl::StrCat(100));
+
+  autonomous_upstream_ = true;
+  autonomous_allow_incomplete_streams_ = true;
+  initialize();
+
+  Http::TestRequestHeaderMapImpl headers{
+      {":method", "GET"}, {":path", "/healthcheck"}, {":scheme", "http"}, {":authority", "host"}};
+  codec_client_ = makeHttpConnection(lookupPort("http"));
+
+  const int pending_streams = 1800; // 18000 in local or this consume too much resource.
+  std::vector<std::pair<Http::RequestEncoder&, IntegrationStreamDecoderPtr>> encoder_decoders;
+  encoder_decoders.reserve(pending_streams);
+
+  const int pending_streams_per_iteration = pending_streams / 4;
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = 0; j < pending_streams_per_iteration; ++j) {
+      // Send and wait
+      encoder_decoders.emplace_back(codec_client_->startRequest(headers));
+    }
+    test_server_->waitForCounterEq("http.config_test.downstream_rq_total",
+                                   pending_streams_per_iteration * (i + 1),
+                                   TestUtility::DefaultTimeout * 5);
+  }
+
+  // Reset 50 streams and then the connection should be closed because too much premature resets.
+  // All streams should be reset correctly without recursion.
+  for (int i = 0; i < 50; ++i) {
+    // Send and reset
+    auto encoder_decoder = codec_client_->startRequest(headers);
+    request_encoder_ = &encoder_decoder.first;
+    auto response = std::move(encoder_decoder.second);
+    codec_client_->sendReset(*request_encoder_);
+    ASSERT_TRUE(response->waitForReset());
+  }
+
+  // Envoy should disconnect client due to premature reset check
+  ASSERT_TRUE(codec_client_->waitForDisconnect());
+  test_server_->waitForCounterEq("http.config_test.downstream_rq_rx_reset", pending_streams + 50,
+                                 TestUtility::DefaultTimeout * 5);
+  // If there is recursion, this result won't be 1.
   test_server_->waitForCounterEq("http.config_test.downstream_rq_too_many_premature_resets", 1);
 }
 
@@ -2085,6 +2154,149 @@ TEST_P(Http2FrameIntegrationTest, SetDetailsTwice) {
   EXPECT_THAT(waitForAccessLog(access_log_name_), HasSubstr("too_many_headers"));
 }
 
+TEST_P(Http2FrameIntegrationTest, UpstreamResponseTrailersWithoutEndStream) {
+  beginSession();
+
+  // Downstream → Envoy: header-only GET (END_STREAM|END_HEADERS).
+  sendFrame(Http2Frame::makeRequest(1, "host", "/"));
+
+  // Envoy → upstream: grab the raw upstream TCP connection.
+  FakeRawConnectionPtr upstream;
+  ASSERT_TRUE(fake_upstreams_[0]->waitForRawConnection(upstream));
+
+  // Wait until Envoy has actually written its preface + SETTINGS + request
+  // HEADERS to the upstream so the client codec stream-1 exists and is
+  // half_closed_local (we sent a header-only GET).
+  std::string observed;
+  ASSERT_TRUE(upstream->waitForData(FakeRawConnection::waitForAtLeastBytes(40), &observed));
+
+  // Craft the malicious upstream response, all in one write so the client
+  // codec processes it in a single dispatch():
+  //   1. SETTINGS (server preface)
+  //   2. SETTINGS ACK
+  //   3. HEADERS stream=1 :status=200, END_HEADERS only (no END_STREAM)
+  //   4. HEADERS stream=1 trailer "x: y", END_HEADERS only (no END_STREAM)
+  //      ← oghttp2 delivers this as RESPONSE_TRAILER without fin; Envoy's
+  //        onHeaders() sees flags & END_STREAM == 0 and fires
+  //        ASSERT(stream->remote_end_stream_).
+  //   5. HEADERS stream=1 trailer again, END_HEADERS|END_STREAM — in a
+  //      release build (ASSERT compiled out) step 4 ran decodeTrailers()
+  //      and freed the ActiveRequest; this third HEADERS dereferences the
+  //      dangling response_decoder_.
+  std::string buf;
+  absl::StrAppend(&buf, std::string(Http2Frame::makeEmptySettingsFrame()));
+  absl::StrAppend(&buf,
+                  std::string(Http2Frame::makeEmptySettingsFrame(Http2Frame::SettingsFlags::Ack)));
+
+  // Response headers: :status 200, END_HEADERS only.
+  absl::StrAppend(&buf, std::string(Http2Frame::makeHeadersFrameWithStatus(
+                            "200", 1, Http2Frame::HeadersFlags::EndHeaders)));
+
+  // Trailers WITHOUT END_STREAM: a single regular header, END_HEADERS only.
+  {
+    Http2Frame trailers =
+        Http2Frame::makeEmptyHeadersFrame(1, Http2Frame::HeadersFlags::EndHeaders);
+    trailers.appendHeaderWithoutIndexing(Http2Frame::Header("x", "y"));
+    trailers.adjustPayloadSize();
+    absl::StrAppend(&buf, std::string(trailers));
+  }
+
+  // Third HEADERS (release-build UAF amplifier).
+  {
+    Http2Frame extra = Http2Frame::makeEmptyHeadersFrame(
+        1, static_cast<Http2Frame::HeadersFlags>(Http::Http2::orFlags(
+               Http2Frame::HeadersFlags::EndStream, Http2Frame::HeadersFlags::EndHeaders)));
+    extra.appendHeaderWithoutIndexing(Http2Frame::Header("x", "z"));
+    extra.adjustPayloadSize();
+    absl::StrAppend(&buf, std::string(extra));
+  }
+
+  ASSERT_TRUE(upstream->write(buf));
+
+  // We expect HEADERS (response headers) first.
+  Http2Frame response = readFrame();
+  EXPECT_EQ(Http2Frame::Type::Headers, response.type());
+
+  // Then we expect RST_STREAM.
+  Http2Frame reset = readFrame();
+  EXPECT_EQ(Http2Frame::Type::RstStream, reset.type());
+
+  tcp_client_->close();
+
+  if (upstream->connected()) {
+    ASSERT_TRUE(upstream->close());
+  }
+}
+
+TEST_P(Http2FrameIntegrationTest, UpstreamResponseTrailersWithoutEndStream_DataFrameAmplifier) {
+  beginSession();
+
+  // Downstream → Envoy: header-only GET (END_STREAM|END_HEADERS).
+  sendFrame(Http2Frame::makeRequest(1, "host", "/"));
+
+  // Envoy → upstream: grab the raw upstream TCP connection.
+  FakeRawConnectionPtr upstream;
+  ASSERT_TRUE(fake_upstreams_[0]->waitForRawConnection(upstream));
+
+  // Wait until Envoy has actually written its preface + SETTINGS + request
+  // HEADERS to the upstream so the client codec stream-1 exists and is
+  // half_closed_local (we sent a header-only GET).
+  std::string observed;
+  ASSERT_TRUE(upstream->waitForData(FakeRawConnection::waitForAtLeastBytes(40), &observed));
+
+  // Craft the malicious upstream response, all in one write so the client
+  // codec processes it in a single dispatch():
+  //   1. SETTINGS (server preface)
+  //   2. SETTINGS ACK
+  //   3. HEADERS stream=1 :status=200, END_HEADERS only (no END_STREAM)
+  //   4. HEADERS stream=1 trailer "x: y", END_HEADERS only (no END_STREAM)
+  //      ← oghttp2 delivers this as RESPONSE_TRAILER without fin; Envoy's
+  //        onHeaders() sees flags & END_STREAM == 0 and fires
+  //        ASSERT(stream->remote_end_stream_).
+  //   5. DATA stream=1 empty, END_STREAM — in a release build (ASSERT
+  //      compiled out) step 4 ran decodeTrailers() and freed the ActiveRequest;
+  //      this DATA frame dereferences the dangling response_decoder_.
+  std::string buf;
+  absl::StrAppend(&buf, std::string(Http2Frame::makeEmptySettingsFrame()));
+  absl::StrAppend(&buf,
+                  std::string(Http2Frame::makeEmptySettingsFrame(Http2Frame::SettingsFlags::Ack)));
+
+  // Response headers: :status 200, END_HEADERS only.
+  absl::StrAppend(&buf, std::string(Http2Frame::makeHeadersFrameWithStatus(
+                            "200", 1, Http2Frame::HeadersFlags::EndHeaders)));
+
+  // Trailers WITHOUT END_STREAM: a single regular header, END_HEADERS only.
+  {
+    Http2Frame trailers =
+        Http2Frame::makeEmptyHeadersFrame(1, Http2Frame::HeadersFlags::EndHeaders);
+    trailers.appendHeaderWithoutIndexing(Http2Frame::Header("x", "y"));
+    trailers.adjustPayloadSize();
+    absl::StrAppend(&buf, std::string(trailers));
+  }
+
+  // Third frame (release-build UAF amplifier): empty DATA frame with END_STREAM.
+  {
+    Http2Frame extra = Http2Frame::makeEmptyDataFrame(1, Http2Frame::DataFlags::EndStream);
+    absl::StrAppend(&buf, std::string(extra));
+  }
+
+  ASSERT_TRUE(upstream->write(buf));
+
+  // We expect HEADERS (response headers) first.
+  Http2Frame response = readFrame();
+  EXPECT_EQ(Http2Frame::Type::Headers, response.type());
+
+  // Then we expect RST_STREAM.
+  Http2Frame reset = readFrame();
+  EXPECT_EQ(Http2Frame::Type::RstStream, reset.type());
+
+  tcp_client_->close();
+
+  if (upstream->connected()) {
+    ASSERT_TRUE(upstream->close());
+  }
+}
+
 TEST_P(Http2FrameIntegrationTest, AdjustUpstreamSettingsMaxStreams) {
   // Configure max concurrent streams to 2.
   config_helper_.addConfigModifier([&](envoy::config::bootstrap::v3::Bootstrap& bootstrap) -> void {
@@ -2912,6 +3124,45 @@ TEST_P(Http2FrameIntegrationTest, DownstreamSendingEmptyMetadata) {
   // HttpIntegrationTest::cleanupUpstreamAndDownstream).
   cleanupUpstreamAndDownstream();
   tcp_client_->close();
+}
+
+TEST_P(Http2FrameIntegrationTest, HostExceedsHeaderMapSizeLimit) {
+  config_helper_.addConfigModifier(
+      [](envoy::extensions::filters::network::http_connection_manager::v3::HttpConnectionManager&
+             hcm) { hcm.mutable_max_request_headers_kb()->set_value(2); });
+  beginSession();
+
+  uint32_t request_idx = 0;
+  std::string large_host(2000, 'a');
+  auto request = Http2Frame::makeRequest(Http2Frame::makeClientStreamId(request_idx),
+                                         "one.example.com", "/path", {{"host", large_host}});
+  sendFrame(request);
+
+  auto frame = readFrame();
+  EXPECT_EQ(Http2Frame::Type::RstStream, frame.type());
+  tcp_client_->close();
+  if (GetParam().http2_implementation == Http2Impl::Nghttp2) {
+    test_server_->waitForCounterGe("http2.header_list_size_too_large", 1);
+  }
+}
+
+TEST_P(Http2FrameIntegrationTest, HostExceedsHeaderMapCountLimit) {
+  config_helper_.addConfigModifier(
+      [](envoy::extensions::filters::network::http_connection_manager::v3::HttpConnectionManager&
+             hcm) {
+        hcm.mutable_common_http_protocol_options()->mutable_max_headers_count()->set_value(4);
+      });
+  beginSession();
+
+  uint32_t request_idx = 0;
+  auto request = Http2Frame::makeRequest(Http2Frame::makeClientStreamId(request_idx),
+                                         "one.example.com", "/path", {{"host", "two.example.com"}});
+  sendFrame(request);
+
+  auto frame = readFrame();
+  EXPECT_EQ(Http2Frame::Type::RstStream, frame.type());
+  tcp_client_->close();
+  test_server_->waitForCounterGe("http2.header_overflow", 1);
 }
 
 // Tests that an empty metadata map from upstream is ignored.

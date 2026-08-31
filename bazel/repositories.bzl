@@ -191,6 +191,8 @@ def envoy_dependencies(skip_targets = []):
     _com_github_curl()
     _com_github_envoyproxy_sqlparser()
     _v8()
+    _fp16()
+    _intel_ittapi()
     _com_googlesource_chromium_base_trace_event_common()
     _com_github_google_quiche()
     _com_googlesource_googleurl()
@@ -223,7 +225,11 @@ def envoy_dependencies(skip_targets = []):
     external_http_archive("bazel_features")
     external_http_archive("bazel_toolchains")
     external_http_archive("bazel_compdb")
-    external_http_archive(name = "envoy_examples")
+    external_http_archive(
+        name = "envoy_examples",
+        patch_args = ["-p1"],
+        patches = ["@envoy//bazel:examples.patch"],
+    )
 
     _com_github_maxmind_libmaxminddb()
 
@@ -247,7 +253,6 @@ def envoy_dependencies(skip_targets = []):
 
     _com_github_wamr()
     _com_github_wasmtime()
-    _com_github_wasm_c_api()
 
     switched_rules_by_language(
         name = "com_google_googleapis_imports",
@@ -619,6 +624,27 @@ def _com_google_absl():
         actual = "@com_google_absl//absl/time:time",
     )
 
+    native.bind(
+        name = "absl_btree",
+        actual = "@com_google_absl//absl/container:btree",
+    )
+    native.bind(
+        name = "absl_flat_hash_map",
+        actual = "@com_google_absl//absl/container:flat_hash_map",
+    )
+    native.bind(
+        name = "absl_flat_hash_set",
+        actual = "@com_google_absl//absl/container:flat_hash_set",
+    )
+    native.bind(
+        name = "absl_strings",
+        actual = "@com_google_absl//absl/strings:strings",
+    )
+    native.bind(
+        name = "absl_time",
+        actual = "@com_google_absl//absl/time:time",
+    )
+
 def _com_google_protobuf():
     external_http_archive(
         name = "rules_python",
@@ -701,14 +727,6 @@ def _com_github_curl():
         build_file_content = BUILD_ALL_CONTENT + """
 cc_library(name = "curl", visibility = ["//visibility:public"], deps = ["@envoy//bazel/foreign_cc:curl"])
 """,
-        # Patch curl 7.74.0 and later due to CMake's problematic implementation of policy `CMP0091`
-        # and introduction of libidn2 dependency which is inconsistently available and must
-        # not be a dynamic dependency on linux.
-        # Upstream patches submitted: https://github.com/curl/curl/pull/6050 & 6362
-        # TODO(https://github.com/envoyproxy/envoy/issues/11816): This patch is obsoleted
-        # by elimination of the curl dependency.
-        patches = ["@envoy//bazel/foreign_cc:curl.patch"],
-        patch_args = ["-p1"],
     )
     native.bind(
         name = "curl",
@@ -720,15 +738,34 @@ def _v8():
         name = "v8",
         patches = [
             "@envoy//bazel:v8.patch",
-            "@envoy//bazel:v8_include.patch",
+            "@envoy//bazel:v8-bazel.patch",
+            "@envoy//bazel:v8-extra.patch",
         ],
         patch_args = ["-p1"],
+        patch_cmds = [
+            "find ./src ./include -type f -exec sed -i.bak -e 's!#include \"third_party/fp16/src/include/fp16.h\"!#include \"fp16.h\"!' {} \\;",
+        ],
+        repo_mapping = {
+            "@abseil-cpp": "@com_google_absl",
+        },
     )
 
     # Needed by proxy_wasm_cpp_host.
     native.bind(
         name = "wee8",
         actual = "@v8//:wee8",
+    )
+
+def _fp16():
+    external_http_archive(
+        name = "fp16",
+        build_file = "@envoy//bazel/external:fp16.BUILD",
+    )
+
+def _intel_ittapi():
+    external_http_archive(
+        name = "intel_ittapi",
+        build_file = "@envoy//bazel/external:intel_ittapi.BUILD",
     )
 
 def _com_googlesource_chromium_base_trace_event_common():
@@ -746,6 +783,11 @@ def _com_googlesource_chromium_base_trace_event_common():
 def _com_github_google_quiche():
     external_http_archive(
         name = "com_github_google_quiche",
+        patch_args = ["-p1"],
+        patches = [
+            "@envoy//bazel/external:oghttp2_trailer_fix.patch",
+        ],
+        patch_tool = "patch",
         patch_cmds = ["find quiche/ -type f -name \"*.bazel\" -delete"],
         build_file = "@envoy//bazel/external:quiche.BUILD",
     )
@@ -914,24 +956,12 @@ def _com_github_wamr():
 def _com_github_wasmtime():
     external_http_archive(
         name = "com_github_wasmtime",
-        build_file = "@envoy//bazel/external:wasmtime.BUILD",
+        build_file = "@proxy_wasm_cpp_host//:bazel/external/wasmtime.BUILD",
     )
 
-def _com_github_wasm_c_api():
-    external_http_archive(
-        name = "com_github_wasm_c_api",
-        build_file = "@envoy//bazel/external:wasm-c-api.BUILD",
-    )
     native.bind(
         name = "wasmtime",
-        actual = "@com_github_wasm_c_api//:wasmtime_lib",
-    )
-
-    # This isn't needed in builds with a single Wasm engine, but "bazel query"
-    # complains about a missing dependency, so point it at the regular target.
-    native.bind(
-        name = "prefixed_wasmtime",
-        actual = "@com_github_wasm_c_api//:wasmtime_lib",
+        actual = "@com_github_wasmtime//:wasmtime_lib",
     )
 
 def _intel_dlb():

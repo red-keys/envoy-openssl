@@ -371,8 +371,8 @@ HttpConnectionManagerConfig::HttpConnectionManagerConfig(
           config.http3_protocol_options(), config.has_stream_error_on_invalid_http_message(),
           config.stream_error_on_invalid_http_message())),
       http1_settings_(Http::Http1::parseHttp1Settings(
-          config.http_protocol_options(), context.messageValidationVisitor(),
-          config.stream_error_on_invalid_http_message(),
+          config.http_protocol_options(), context.serverFactoryContext(),
+          context.messageValidationVisitor(), config.stream_error_on_invalid_http_message(),
           xff_num_trusted_hops_ == 0 && use_remote_address_)),
       max_request_headers_kb_(PROTOBUF_GET_WRAPPED_OR_DEFAULT(
           config, max_request_headers_kb,
@@ -772,7 +772,7 @@ Http::ServerConnectionPtr HttpConnectionManagerConfig::createCodec(
         Http::Http2::CodecStats::atomicGet(http2_codec_stats_, context_.scope()),
         context_.serverFactoryContext().api().randomGenerator(), http2_options_,
         maxRequestHeadersKb(), maxRequestHeadersCount(), headersWithUnderscoresAction(),
-        overload_manager);
+        overload_manager, context_.serverFactoryContext().runtime());
   case CodecType::HTTP3:
     return Config::Utility::getAndCheckFactoryByName<QuicHttpServerConnectionFactory>(
                "quic.http_server_connection.default")
@@ -786,7 +786,8 @@ Http::ServerConnectionPtr HttpConnectionManagerConfig::createCodec(
         connection, data, callbacks, context_.scope(),
         context_.serverFactoryContext().api().randomGenerator(), http1_codec_stats_,
         http2_codec_stats_, http1_settings_, http2_options_, maxRequestHeadersKb(),
-        maxRequestHeadersCount(), headersWithUnderscoresAction(), overload_manager);
+        maxRequestHeadersCount(), headersWithUnderscoresAction(), overload_manager,
+        context_.serverFactoryContext().runtime());
   }
   PANIC_DUE_TO_CORRUPT_ENUM;
 }

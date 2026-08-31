@@ -77,6 +77,7 @@ uncomment.sh "$1" --comment -h \
   --uncomment-typedef-redef SSL_SESSION \
   --uncomment-typedef-redef SSL \
   --uncomment-typedef-redef X509 \
+  --uncomment-typedef-redef X509_REVOKED \
   --uncomment-typedef-redef X509_STORE_CTX \
   --uncomment-typedef-redef X509_STORE \
   --uncomment-typedef-redef ECDSA_SIG --sed 's/ossl_ecdsa_sig_st/ossl_ECDSA_SIG_st/' \
@@ -109,5 +110,7 @@ uncomment.sh "$1" --comment -h \
   --uncomment-regex-range 'template\s*<typename\s*T,\s*typename\s*Enable\s*=\s*void>' 'struct\s*DeleterImpl\s*\{\};' \
   --uncomment-struct Deleter \
   --uncomment-regex-range 'template\s*<typename\s*T,\s*typename\s*CleanupRet,\s*void\s*(\*init)(T\s*\*),' '};$' \
-  --uncomment-regex 'template\s*<typename' 'using\s*UniquePtr'
+  --uncomment-regex 'template\s*<typename' 'using\s*UniquePtr' \
+  --uncomment-typedef-redef  ASN1_BMPSTRING \
+  --uncomment-typedef-redef  ASN1_UNIVERSALSTRING
 
